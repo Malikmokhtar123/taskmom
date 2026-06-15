@@ -2,7 +2,9 @@
   "name": "taskmom",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,9 +18,10 @@
     "twilio": "^5.3.3"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^22.19.21",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
     "eslint": "^8",
     "eslint-config-next": "15.1.3",
     "postcss": "^8",
