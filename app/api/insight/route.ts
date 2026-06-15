@@ -4,14 +4,13 @@ import { getChildrenWithSupplies } from '@/db/database';
 export async function POST() {
   const children = getChildrenWithSupplies();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     const urgent = children.flatMap(c => c.supplies).filter(s => s.days_remaining <= 7);
-    const names = [...new Set(urgent.map(s => children.find(c => c.supplies.some(x => x.id === s.id))?.name))].join(', ');
     return NextResponse.json({
       insight: urgent.length
-        ? `${urgent.length} supply item${urgent.length > 1 ? 's' : ''} need urgent reordering (${names}). Add your ANTHROPIC_API_KEY to Vercel environment variables to unlock AI-powered care insights.`
-        : `All supplies look good right now! Add your ANTHROPIC_API_KEY to Vercel environment variables to unlock AI-powered care insights.`,
+        ? `${urgent.length} supply item${urgent.length > 1 ? 's' : ''} need urgent reordering. Add your GROQ_API_KEY to Vercel environment variables to unlock AI-powered care insights.`
+        : `All supplies look good right now! Add your GROQ_API_KEY to unlock AI-powered care insights.`,
     });
   }
 
@@ -20,11 +19,11 @@ export async function POST() {
     return `${c.name}: ${items || 'no supplies tracked'}`;
   }).join('\n');
 
-  const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ apiKey });
+  const { default: Groq } = await import('groq-sdk');
+  const client = new Groq({ apiKey });
 
-  const res = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+  const res = await client.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 250,
     messages: [{
       role: 'user',
@@ -32,5 +31,5 @@ export async function POST() {
     }],
   });
 
-  return NextResponse.json({ insight: (res.content[0] as { text: string }).text });
+  return NextResponse.json({ insight: res.choices[0].message.content ?? '' });
 }
