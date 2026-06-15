@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const SUPPLY_TYPES = [
-  { value: 'insulin_vials', label: 'Insulin Vials', unit: 'vials' },
-  { value: 'insulin_pens', label: 'Insulin Pens', unit: 'pens' },
-  { value: 'cgm_sensors', label: 'CGM Sensors', unit: 'sensors' },
-  { value: 'test_strips', label: 'Test Strips', unit: 'strips' },
-  { value: 'pump_cartridges', label: 'Pump Cartridges', unit: 'cartridges' },
-  { value: 'lancets', label: 'Lancets', unit: 'lancets' },
+  { value: 'insulin_vials',   label: 'Insulin Vials',     unit: 'vials' },
+  { value: 'insulin_pens',    label: 'Insulin Pens',      unit: 'pens' },
+  { value: 'cgm_sensors',     label: 'CGM Sensors',       unit: 'sensors' },
+  { value: 'test_strips',     label: 'Test Strips',       unit: 'strips' },
+  { value: 'pump_cartridges', label: 'Pump Cartridges',   unit: 'cartridges' },
+  { value: 'lancets',         label: 'Lancets',           unit: 'lancets' },
 ];
 
 type Supply = {
@@ -30,7 +30,7 @@ type Child = {
 };
 
 function daysColor(days: number) {
-  if (days <= 7) return 'bg-red-100 border-red-300 text-red-800';
+  if (days <= 7)  return 'bg-red-100 border-red-300 text-red-800';
   if (days <= 14) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
   return 'bg-green-100 border-green-300 text-green-800';
 }
@@ -41,18 +41,16 @@ function daysLabel(days: number) {
 }
 
 export default function Dashboard() {
-  const [children, setChildren] = useState<Child[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [remindStatus, setRemindStatus] = useState('');
-  const [showAddChild, setShowAddChild] = useState(false);
-  const [showAddSupply, setShowAddSupply] = useState<number | null>(null);
-  const [newChildName, setNewChildName] = useState('');
-  const [supplyForm, setSupplyForm] = useState({
-    type: 'cgm_sensors',
-    current_stock: '',
-    daily_usage: '',
-    reorder_threshold: '14',
-    pharmacy_url: '',
+  const [children,       setChildren]       = useState<Child[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [remindStatus,   setRemindStatus]   = useState('');
+  const [insight,        setInsight]        = useState('');
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [showAddChild,   setShowAddChild]   = useState(false);
+  const [showAddSupply,  setShowAddSupply]  = useState<number | null>(null);
+  const [newChildName,   setNewChildName]   = useState('');
+  const [supplyForm,     setSupplyForm]     = useState({
+    type: 'cgm_sensors', current_stock: '', daily_usage: '', reorder_threshold: '14', pharmacy_url: '',
   });
 
   const load = useCallback(async () => {
@@ -98,17 +96,26 @@ export default function Dashboard() {
   }
 
   async function sendReminder() {
-    setRemindStatus('Checking supplies...');
-    const res = await fetch('/api/remind', { method: 'POST' });
+    setRemindStatus('Checking supplies…');
+    const res  = await fetch('/api/remind', { method: 'POST' });
     const data = await res.json();
-    if (data.twilioConfigured === false) {
-      setRemindStatus(`Twilio not configured — but ${data.sent} low supply alert(s) detected.`);
-    } else if (data.sent === 0) {
-      setRemindStatus('All supplies are stocked. No reminder sent.');
+    if (data.sent === 0) {
+      setRemindStatus('All supplies are stocked. No reminder needed.');
+    } else if (data.twilioConfigured === false) {
+      setRemindStatus(`${data.sent} low item(s) detected. AI message: "${data.message}"`);
     } else {
-      setRemindStatus(`SMS sent for ${data.sent} low supply alert(s).`);
+      setRemindStatus(`SMS sent for ${data.sent} low item(s).`);
     }
-    setTimeout(() => setRemindStatus(''), 5000);
+    setTimeout(() => setRemindStatus(''), 8000);
+  }
+
+  async function getInsight() {
+    setInsightLoading(true);
+    setInsight('');
+    const res  = await fetch('/api/insight', { method: 'POST' });
+    const data = await res.json();
+    setInsight(data.insight ?? '');
+    setInsightLoading(false);
   }
 
   const totalLow = children.flatMap(c => c.supplies).filter(s => s.days_remaining <= 7).length;
@@ -116,26 +123,42 @@ export default function Dashboard() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">TaskMom</h1>
           <p className="text-sm text-gray-500 mt-0.5">T1D supply tracker</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {totalLow > 0 && (
             <span className="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-              {totalLow} low
+              {totalLow} urgent
             </span>
           )}
+          <button
+            onClick={getInsight}
+            disabled={insightLoading}
+            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-medium px-3 py-2 rounded-lg transition"
+          >
+            {insightLoading ? '…' : '✨ AI'}
+          </button>
           <button
             onClick={sendReminder}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
           >
-            Send Reminder
+            Remind
           </button>
         </div>
       </div>
 
+      {/* AI insight panel */}
+      {insight && (
+        <div className="mb-4 p-4 bg-violet-50 border border-violet-200 rounded-xl">
+          <p className="text-xs font-semibold text-violet-500 uppercase tracking-wide mb-1.5">✨ AI Care Summary</p>
+          <p className="text-sm text-violet-900 leading-relaxed">{insight}</p>
+        </div>
+      )}
+
+      {/* Remind status */}
       {remindStatus && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
           {remindStatus}
@@ -143,7 +166,7 @@ export default function Dashboard() {
       )}
 
       {loading ? (
-        <p className="text-gray-400 text-center py-12">Loading...</p>
+        <p className="text-gray-400 text-center py-12">Loading…</p>
       ) : children.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <p className="text-4xl mb-3">👧</p>
@@ -277,7 +300,7 @@ export default function Dashboard() {
       </div>
 
       <p className="text-center text-xs text-gray-300 mt-8">
-        Green = 14+ days · Yellow = 7–14 days · Red = under 7 days
+        Green = 14+ days · Yellow = 7–14 · Red = under 7
       </p>
     </div>
   );
