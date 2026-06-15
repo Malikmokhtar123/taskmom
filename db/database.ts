@@ -12,6 +12,7 @@ export interface Supply {
   daily_usage: number;
   current_stock: number;
   reorder_threshold: number;
+  importance: number; // 1 = low, 2 = medium, 3 = high
   pharmacy_url: string | null;
 }
 
@@ -33,14 +34,14 @@ const childrenStore: Child[] = [
 ];
 
 const suppliesStore: Supply[] = [
-  { id: 1, child_id: 1, type: 'cgm_sensors',     unit: 'sensors',    daily_usage: 0.33, current_stock: 2,  reorder_threshold: 14, pharmacy_url: null },
-  { id: 2, child_id: 1, type: 'insulin_pens',     unit: 'pens',       daily_usage: 0.5,  current_stock: 15, reorder_threshold: 14, pharmacy_url: null },
-  { id: 3, child_id: 2, type: 'insulin_vials',    unit: 'vials',      daily_usage: 0.25, current_stock: 1,  reorder_threshold: 14, pharmacy_url: null },
-  { id: 4, child_id: 2, type: 'test_strips',      unit: 'strips',     daily_usage: 8,    current_stock: 40, reorder_threshold: 14, pharmacy_url: null },
-  { id: 5, child_id: 3, type: 'pump_cartridges',  unit: 'cartridges', daily_usage: 0.33, current_stock: 20, reorder_threshold: 14, pharmacy_url: null },
-  { id: 6, child_id: 3, type: 'lancets',          unit: 'lancets',    daily_usage: 4,    current_stock: 18, reorder_threshold: 14, pharmacy_url: null },
-  { id: 7, child_id: 4, type: 'cgm_sensors',      unit: 'sensors',    daily_usage: 0.33, current_stock: 5,  reorder_threshold: 14, pharmacy_url: null },
-  { id: 8, child_id: 5, type: 'insulin_pens',     unit: 'pens',       daily_usage: 0.5,  current_stock: 3,  reorder_threshold: 14, pharmacy_url: null },
+  { id: 1, child_id: 1, type: 'cgm_sensors',    unit: 'sensors',    daily_usage: 0.33, current_stock: 2,  reorder_threshold: 14, importance: 3, pharmacy_url: null },
+  { id: 2, child_id: 1, type: 'insulin_pens',    unit: 'pens',       daily_usage: 0.5,  current_stock: 15, reorder_threshold: 14, importance: 3, pharmacy_url: null },
+  { id: 3, child_id: 2, type: 'insulin_vials',   unit: 'vials',      daily_usage: 0.25, current_stock: 1,  reorder_threshold: 14, importance: 3, pharmacy_url: null },
+  { id: 4, child_id: 2, type: 'test_strips',     unit: 'strips',     daily_usage: 8,    current_stock: 40, reorder_threshold: 14, importance: 2, pharmacy_url: null },
+  { id: 5, child_id: 3, type: 'pump_cartridges', unit: 'cartridges', daily_usage: 0.33, current_stock: 20, reorder_threshold: 14, importance: 3, pharmacy_url: null },
+  { id: 6, child_id: 3, type: 'lancets',         unit: 'lancets',    daily_usage: 4,    current_stock: 18, reorder_threshold: 14, importance: 1, pharmacy_url: null },
+  { id: 7, child_id: 4, type: 'cgm_sensors',     unit: 'sensors',    daily_usage: 0.33, current_stock: 5,  reorder_threshold: 14, importance: 3, pharmacy_url: null },
+  { id: 8, child_id: 5, type: 'insulin_pens',    unit: 'pens',       daily_usage: 0.5,  current_stock: 3,  reorder_threshold: 14, importance: 3, pharmacy_url: null },
 ];
 
 let nextChildId = 6;
@@ -75,8 +76,15 @@ export function upsertSupply(
   if (idx >= 0) {
     suppliesStore[idx] = { ...suppliesStore[idx], unit, daily_usage, current_stock, reorder_threshold, pharmacy_url };
   } else {
-    suppliesStore.push({ id: nextSupplyId++, child_id, type, unit, daily_usage, current_stock, reorder_threshold, pharmacy_url });
+    suppliesStore.push({ id: nextSupplyId++, child_id, type, unit, daily_usage, current_stock, reorder_threshold, pharmacy_url, importance: 2 });
   }
+}
+
+export function updateImportance(supply_id: number, importance: number): boolean {
+  const idx = suppliesStore.findIndex(s => s.id === supply_id);
+  if (idx < 0) return false;
+  suppliesStore[idx] = { ...suppliesStore[idx], importance };
+  return true;
 }
 
 export function getLowSupplies(): LowSupply[] {

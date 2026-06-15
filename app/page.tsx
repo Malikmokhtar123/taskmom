@@ -19,6 +19,7 @@ type Supply = {
   current_stock: number;
   reorder_threshold: number;
   days_remaining: number;
+  importance: number;
   pharmacy_url?: string;
 };
 
@@ -29,9 +30,18 @@ type Child = {
   supplies: Supply[];
 };
 
-function daysColor(days: number) {
-  if (days <= 7)  return 'bg-red-100 border-red-300 text-red-800';
-  if (days <= 14) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
+// Blend time urgency with user-set importance.
+// importance 3 (high) → effective days cut in half → turns red sooner
+// importance 1 (low)  → effective days doubled    → stays green longer
+function effectiveDays(days: number, importance: number): number {
+  const factor = [2.0, 1.0, 0.5][importance - 1] ?? 1.0;
+  return days * factor;
+}
+
+function daysColor(days: number, importance: number = 2) {
+  const eff = effectiveDays(days, importance);
+  if (eff <= 7)  return 'bg-red-100 border-red-300 text-red-800';
+  if (eff <= 14) return 'bg-yellow-100 border-yellow-300 text-yellow-800';
   return 'bg-green-100 border-green-300 text-green-800';
 }
 
@@ -39,6 +49,12 @@ function daysLabel(days: number) {
   if (days <= 0) return 'OUT';
   return `${days}d`;
 }
+
+const IMPORTANCE_STYLES = [
+  { label: '!',  title: 'Low priority',    className: 'text-gray-400 border-gray-200 bg-gray-50' },
+  { label: '!!', title: 'Medium priority', className: 'text-blue-500 border-blue-200 bg-blue-50' },
+  { label: '!!!',title: 'High priority',   className: 'text-orange-500 border-orange-300 bg-orange-50' },
+];
 
 export default function Dashboard() {
   const [children,       setChildren]       = useState<Child[]>([]);
@@ -109,6 +125,16 @@ export default function Dashboard() {
     setTimeout(() => setRemindStatus(''), 8000);
   }
 
+  async function cycleImportance(supplyId: number, current: number) {
+    const next = (current % 3) + 1;
+    await fetch('/api/supplies', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supply_id: supplyId, importance: next }),
+    });
+    load();
+  }
+
   async function getInsight() {
     setInsightLoading(true);
     setInsight('');
@@ -118,7 +144,7 @@ export default function Dashboard() {
     setInsightLoading(false);
   }
 
-  const totalLow = children.flatMap(c => c.supplies).filter(s => s.days_remaining <= 7).length;
+  const totalLow = children.flatMap(c => c.supplies).filter(s => effectiveDays(s.days_remaining, s.importance) <= 7).length;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -205,7 +231,14 @@ export default function Dashboard() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${daysColor(s.days_remaining)}`}>
+                          <button
+                            onClick={() => cycleImportance(s.id, s.importance)}
+                            title={IMPORTANCE_STYLES[(s.importance ?? 2) - 1].title}
+                            className={`text-xs font-bold px-2 py-1 rounded-full border transition ${IMPORTANCE_STYLES[(s.importance ?? 2) - 1].className}`}
+                          >
+                            {IMPORTANCE_STYLES[(s.importance ?? 2) - 1].label}
+                          </button>
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${daysColor(s.days_remaining, s.importance)}`}>
                             {daysLabel(s.days_remaining)}
                           </span>
                           {s.pharmacy_url && (
