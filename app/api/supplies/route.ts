@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { upsertSupply, updateImportance } from '@/db/database';
+import { upsertSupply, updateImportance, adjustStock } from '@/db/database';
 
 export async function POST(req: Request) {
   const { child_id, type, unit, daily_usage, current_stock, reorder_threshold, pharmacy_url } = await req.json();
@@ -9,9 +9,16 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const { supply_id, importance } = await req.json();
-  if (!supply_id || ![1, 2, 3].includes(importance)) {
-    return NextResponse.json({ error: 'supply_id and importance (1-3) required' }, { status: 400 });
+  const { supply_id, importance, stock_delta } = await req.json();
+  if (!supply_id) return NextResponse.json({ error: 'supply_id required' }, { status: 400 });
+
+  if (stock_delta !== undefined) {
+    const ok = adjustStock(supply_id, stock_delta);
+    return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: 'not found' }, { status: 404 });
+  }
+
+  if (![1, 2, 3].includes(importance)) {
+    return NextResponse.json({ error: 'importance must be 1-3' }, { status: 400 });
   }
   const ok = updateImportance(supply_id, importance);
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: 'not found' }, { status: 404 });

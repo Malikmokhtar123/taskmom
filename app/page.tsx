@@ -125,6 +125,15 @@ export default function Dashboard() {
     setTimeout(() => setRemindStatus(''), 8000);
   }
 
+  async function adjustStock(supplyId: number, delta: number) {
+    await fetch('/api/supplies', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supply_id: supplyId, stock_delta: delta }),
+    });
+    load();
+  }
+
   async function cycleImportance(supplyId: number, current: number) {
     const next = (current % 3) + 1;
     await fetch('/api/supplies', {
@@ -224,11 +233,17 @@ export default function Dashboard() {
                     const typeLabel = SUPPLY_TYPES.find(t => t.value === s.type)?.label ?? s.type;
                     return (
                       <div key={s.id} className="px-5 py-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{typeLabel}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {s.current_stock} {s.unit} · {s.daily_usage}/day
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button onClick={() => adjustStock(s.id, 1)} className="text-xs leading-none w-6 h-6 rounded bg-gray-100 hover:bg-green-100 hover:text-green-700 font-bold transition">+</button>
+                            <button onClick={() => adjustStock(s.id, -1)} className="text-xs leading-none w-6 h-6 rounded bg-gray-100 hover:bg-red-100 hover:text-red-700 font-bold transition">−</button>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{typeLabel}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {s.current_stock} {s.unit} · {s.daily_usage}/day
+                            </p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button

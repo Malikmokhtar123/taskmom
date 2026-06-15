@@ -80,6 +80,13 @@ export function upsertSupply(
   }
 }
 
+export function adjustStock(supply_id: number, delta: number): boolean {
+  const idx = suppliesStore.findIndex(s => s.id === supply_id);
+  if (idx < 0) return false;
+  suppliesStore[idx] = { ...suppliesStore[idx], current_stock: Math.max(0, suppliesStore[idx].current_stock + delta) };
+  return true;
+}
+
 export function updateImportance(supply_id: number, importance: number): boolean {
   const idx = suppliesStore.findIndex(s => s.id === supply_id);
   if (idx < 0) return false;
