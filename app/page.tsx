@@ -50,7 +50,7 @@ export default function Dashboard() {
   const [showAddSupply,  setShowAddSupply]  = useState<number | null>(null);
   const [newChildName,   setNewChildName]   = useState('');
   const [supplyForm,     setSupplyForm]     = useState({
-    type: 'cgm_sensors', current_stock: '', daily_usage: '', reorder_threshold: '14', pharmacy_url: '',
+    type: '', unit: '', current_stock: '', daily_usage: '', reorder_threshold: '14', pharmacy_url: '',
   });
 
   const load = useCallback(async () => {
@@ -83,7 +83,7 @@ export default function Dashboard() {
       body: JSON.stringify({
         child_id: childId,
         type: supplyForm.type,
-        unit: typeInfo?.unit ?? 'units',
+        unit: supplyForm.unit || typeInfo?.unit || 'units',
         daily_usage: parseFloat(supplyForm.daily_usage) || 1,
         current_stock: parseFloat(supplyForm.current_stock) || 0,
         reorder_threshold: parseFloat(supplyForm.reorder_threshold) || 14,
@@ -91,7 +91,7 @@ export default function Dashboard() {
       }),
     });
     setShowAddSupply(null);
-    setSupplyForm({ type: 'cgm_sensors', current_stock: '', daily_usage: '', reorder_threshold: '14', pharmacy_url: '' });
+    setSupplyForm({ type: '', unit: '', current_stock: '', daily_usage: '', reorder_threshold: '14', pharmacy_url: '' });
     load();
   }
 
@@ -228,13 +228,23 @@ export default function Dashboard() {
               {showAddSupply === child.id && (
                 <form onSubmit={e => addSupply(e, child.id)} className="px-5 py-4 bg-gray-50 border-t border-gray-100 space-y-3">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Add / Update Supply</p>
-                  <select
+                  <input
+                    type="text" placeholder="Supply name (e.g. CGM Sensors, Insulin, anything)"
+                    list="supply-suggestions"
                     value={supplyForm.type}
                     onChange={e => setSupplyForm(f => ({ ...f, type: e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  >
-                    {SUPPLY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    required
+                  />
+                  <datalist id="supply-suggestions">
+                    {SUPPLY_TYPES.map(t => <option key={t.value} value={t.label} />)}
+                  </datalist>
+                  <input
+                    type="text" placeholder="Unit (e.g. vials, sensors, boxes)"
+                    value={supplyForm.unit}
+                    onChange={e => setSupplyForm(f => ({ ...f, unit: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="number" step="0.1" placeholder="Current stock"
